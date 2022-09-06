@@ -58,6 +58,8 @@ path: downloadimages/{s3objectkey}
 Caminho de rota para acesso a função:
 path: infoimages
 
+
+
 Todas as funções lambdas serão executadas pela API Gateway.
 
 No desenvolvimento não consegui empacotar a biblioteca Pillow para subir com o serverless deploy, então coloquei os comandos de instalação dessa biblioteca em runtime.
