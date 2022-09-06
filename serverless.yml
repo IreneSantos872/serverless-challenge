@@ -4,11 +4,12 @@ frameworkVersion: ">=1.1.0"
 
 provider:
   name: aws
-  runtime: nodejs12.x # python3.6
-  profile: hackathon
+  runtime: python3.9 #nodejs12.x
+  profile: default
   region: us-east-1
   environment:
-    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+    DYNAMODB_TABLE: tbl_image
+    BUCKET_NAME: bucketdesafioirene30
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -19,6 +20,17 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+    - Effect: Allow
+      Action: 's3:ListBucket'
+      Resource: '*'
+        # Allow functions to read/write objects in a bucket
+    - Effect: Allow
+      Action:
+        - 's3:GetObject'
+        - 's3:PutObject'
+        - 's3:*'
+      Resource:
+        - 'arn:aws:s3:::bucketdesafioirene30/*'
 
 functions:
   extractMetadata:
@@ -28,7 +40,7 @@ functions:
     timeout: 30
     events:
       - s3:
-          bucket: bucketname # Escolha o nome do seu bucket que deve ser único
+          bucket: bucketdesafioirene30 # Escolha o nome do seu bucket que deve ser único
           event: s3:ObjectCreated:*
           rules:
             - prefix: uploads/
@@ -43,6 +55,30 @@ functions:
           path: images/{s3objectkey}
           method: get
           cors: true
+  getImage:
+    handler: handler.getImage
+    description:
+    memorySize: 128
+    timeout: 30
+    environment:
+      BUCKET_NAME: ${self:provider.environment.BUCKET_NAME}
+    events:
+      - http:
+          path: downloadimages/{s3objectkey}
+          method: get
+          cors: true
+  getInfo:
+    handler: handler.getInfo
+    description:
+    memorySize: 128
+    timeout: 30
+    environment:
+      BUCKET_NAME: ${self:provider.environment.BUCKET_NAME}
+    events:
+      - http:
+          path: infoimages
+          method: get
+          cors: true
 
 resources:
   Resources:
@@ -53,10 +89,14 @@ resources:
           -
             AttributeName: s3objectkey
             AttributeType: S
+          - AttributeName: size
+            AttributeType: N
         KeySchema:
           -
             AttributeName: s3objectkey
             KeyType: HASH
+          - AttributeName: size
+            KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
