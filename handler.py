@@ -1,7 +1,5 @@
 # coding=utf-8
 import base64
-from operator import attrgetter
-
 import boto3
 import json
 import urllib.parse
@@ -11,9 +9,7 @@ import subprocess
 from io import BytesIO
 from decimal import Decimal
 
-# pip install custom package to /tmp/ and add to path
 import botocore
-from boto3.dynamodb.conditions import Attr
 
 subprocess.call('pip install Pillow -t /tmp/ --no-cache-dir'.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 sys.path.insert(1, '/tmp/')
@@ -31,38 +27,17 @@ class DecimalEncoder(json.JSONEncoder):
     return json.JSONEncoder.default(self, obj)
 
 def extractMetadata(event, context):
-    #exemplo
-    #https://docs.aws.amazon.com/lambda/latest/dg/with-s3-example.html
-
-    # Get the object from the event and show its content type
+     # Get the object from the event and show its content type
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'], encoding='utf-8')
     try:
         response = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
-        # print("CONTENT TYPE: " + response['ContentType'])
-        # return response['ContentType']
 
         # read the image
         image = Image.open(BytesIO(response))
         print(image.size)
-        #exemplo image
-        #https://www.thepythoncode.com/article/extracting-image-metadata-in-python
-        #imagename = s3.get_object(Bucket=bucket, Key=key)
-        # imagename = s3.get(Bucket=bucket, Key=key)
-        # print(imagename)
-        # image = cv2.imread(imagename)
-        # print(image.shape)
 
-        # get width and height
-        height = image.height
-        width = image.width
-
-        # display width and height
-        print("The height of the image is: ", height)
-        print("The width of the image is: ", width)
-        #exemplo putItem dynamo
-        #https://hands-on.cloud/working-with-dynamodb-in-python-using-boto3/
-        table = dynamodb.Table('tbl_image')
+        table = dynamodb.Table(os.getenv('DYNAMODB_TABLE', default=None))
         chave = key.split("uploads/")
         headImage = s3.head_object(Bucket=bucket, Key=key)
         table.put_item(
@@ -96,7 +71,7 @@ def extractMetadata(event, context):
 
 def getMetadata(event, context):
     try:
-        table = dynamodb.Table('tbl_image')
+        table = dynamodb.Table(os.getenv('DYNAMODB_TABLE', default=None))
         print('DADO DE ENTRADA')
         print(event)
         print(event['pathParameters'])
@@ -179,7 +154,7 @@ def unique(list):
 
 def getInfo(event, context):
     try:
-        table = dynamodb.Table('tbl_image')
+        table = dynamodb.Table(os.getenv('DYNAMODB_TABLE',  default=None))
         bucket = os.getenv('BUCKET_NAME', default=None)
         response = table.scan()
         print(response)
